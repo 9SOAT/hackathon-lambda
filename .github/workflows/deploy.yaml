@@ -1,0 +1,55 @@
+name: Deploy Python Lambda
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    env:
+      AWS_REGION: us-east-1
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar AWS credenciais via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT }}:role/${{ secrets.AWS_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Compactar Lambda em ZIP
+        run: |
+          zip infra/v1/lambda_function.zip lambda/lambda_function.py
+
+      - name: Configurar Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.10.5
+
+      - name: Inicializar Terraform
+        run: |
+          cd infra/v1
+          terraform init
+
+      - name: Aplicar Terraform (Deploy Lambda)
+        id: apply
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          cd infra/v1
+          terraform apply -auto-approve
