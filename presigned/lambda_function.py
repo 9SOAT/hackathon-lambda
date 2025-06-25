@@ -14,7 +14,7 @@ def lambda_handler(event, context):
     logger.info(f'Evento recebido: {json.dumps(event)}')
 
     try:
-        # Extrai o ID do usuário do JWT
+        # Extrai o ID do usuário do JWT (teste)
         user_id = event['requestContext']['authorizer']['jwt']['claims']['sub']
         timestamp_ms = int(time.time() * 1000)
         s3_key = f"{user_id}.{timestamp_ms}"
