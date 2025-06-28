@@ -37,7 +37,9 @@ jobs:
 
       - name: Compactar Lambda em ZIP
         run: |
-          zip -r presigned.zip presigned
+          cd presigned
+          zip -r ../presigned.zip .
+          cd ..
 
       - name: Atualizar código da Lambda existente
         run: |
@@ -48,9 +50,11 @@ jobs:
 
       - name: Compacta Email Notification Lambda
         run: |
-          zip -r email_notification.zip notification
+          cd notification
+          zip -r ../email_notification.zip .
+          cd ..
 
-      - name: Atualizar código da Lambda existente
+      - name: Atualizar código da Lambda Email Notification existente
         run: |
           aws lambda update-function-code \
             --function-name ${{ env.EMAIL_NOTIFICATION_FUNCTION_NAME }} \
