@@ -42,7 +42,7 @@ jobs:
       - name: Atualizar código da Lambda existente
         run: |
           aws lambda update-function-code \
-            --function-name ${{ env.FUNCTION_NAME }} \
+            --function-name ${{ env.PRESIGNED_URL_FUNCTION_NAME }} \
             --zip-file fileb://presigned.zip \
             --region ${{ env.AWS_REGION }}
 
