@@ -37,7 +37,7 @@ jobs:
 
       - name: Compactar Lambda em ZIP
         run: |
-          zip presigned.zip presigned
+          zip -r presigned.zip presigned
 
       - name: Atualizar código da Lambda existente
         run: |
@@ -48,7 +48,7 @@ jobs:
 
       - name: Compacta Email Notification Lambda
         run: |
-          zip email_notification.zip notification
+          zip -r email_notification.zip notification
 
       - name: Atualizar código da Lambda existente
         run: |
