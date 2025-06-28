@@ -34,11 +34,17 @@ def send_templated_email(receiver_email: str, template_name: str, sender_email: 
     }
 
 def lambda_handler(event, context):
+    for message in event['Records']:
+        process_message(message)
+    print("Messages processed successfully.")
+
+def process_message(message):
+    print(f"Processing message: {message['body']}")
     try:
-        receiver_email = event["receiver_email"]
-        sender_email = event["sender_email"]
-        template_name = event["template_name"]
-        placeholders = event["placeholders"]
+        receiver_email = message['body']["receiver_email"]
+        sender_email = message['body']["sender_email"]
+        template_name = message['body']["template_name"]
+        placeholders = message['body']["placeholders"]
 
         return send_templated_email(receiver_email, template_name, sender_email, placeholders)
     except Exception as e:
