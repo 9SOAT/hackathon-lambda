@@ -17,7 +17,8 @@ jobs:
 
     env:
       AWS_REGION: us-east-1
-      FUNCTION_NAME: hackathon_presigned_url
+      PRESIGNED_URL_FUNCTION_NAME: hackathon_presigned_url
+      EMAIL_NOTIFICATION_FUNCTION_NAME: hackathon_email_notification
 
     steps:
       - name: Checkout do código
@@ -36,13 +37,22 @@ jobs:
 
       - name: Compactar Lambda em ZIP
         run: |
-          cd presigned
-          zip -r ../presigned.zip .
-          cd ..
+          zip presigned.zip presigned
 
       - name: Atualizar código da Lambda existente
         run: |
           aws lambda update-function-code \
             --function-name ${{ env.FUNCTION_NAME }} \
             --zip-file fileb://presigned.zip \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Compacta Email Notification Lambda
+        run: |
+          zip email_notification.zip notification
+
+      - name: Atualizar código da Lambda existente
+        run: |
+          aws lambda update-function-code \
+            --function-name ${{ env.EMAIL_NOTIFICATION_FUNCTION_NAME }} \
+            --zip-file fileb://email_notification.zip \
             --region ${{ env.AWS_REGION }}
