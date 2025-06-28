@@ -9,6 +9,7 @@ from botocore.exceptions import ClientError
 ses_client = boto3.client('ses')  # Adjust the region if necessary.
 
 def send_templated_email(receiver_email: str, template_name: str, sender_email: str, template_data: dict):
+    print(f"Sending email to {receiver_email} using template {template_name} from {sender_email} with data: {template_data}")
     try:
         response = ses_client.send_templated_email(
             Source=sender_email,
