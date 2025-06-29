@@ -4,7 +4,6 @@ import os
 import logging
 import time
 
-s3_client = boto3.client('s3')
 BUCKET_NAME = os.environ.get('BUCKET_NAME', 'presigned-url-fiap-test')
 
 logger = logging.getLogger()
@@ -12,9 +11,9 @@ logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
     logger.info(f'Evento recebido: {json.dumps(event)}')
+    s3_client = boto3.client('s3')
 
     try:
-        # Extrai o ID do usuário do JWT (teste 2)
         user_id = event['requestContext']['authorizer']['jwt']['claims']['sub']
         timestamp_ms = int(time.time() * 1000)
         s3_key = f"{user_id}.{timestamp_ms}"
