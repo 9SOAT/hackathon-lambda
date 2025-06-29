@@ -1,4 +1,9 @@
-# Hackathon Lambda
+
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=9SOAT_hackathon-lambda&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=9SOAT_hackathon-lambda)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=9SOAT_hackathon-lambda&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=9SOAT_hackathon-lambda)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=9SOAT_hackathon-lambda&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=9SOAT_hackathon-lambda)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=9SOAT_hackathon-lambda&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=9SOAT_hackathon-lambda)
+
 
 ## Descrição do Projeto
 
