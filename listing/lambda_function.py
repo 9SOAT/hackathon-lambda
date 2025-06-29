@@ -5,41 +5,43 @@ import json
 
 def lambda_handler(event, context):
     dynamodb = boto3.resource('dynamodb')
-
     table_name = os.getenv("DDB_TABLE")
     table = dynamodb.Table(table_name)
 
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
     try:
-        response = table.scan()
-
+        # Scan with an optional limit
+        response = table.scan(Limit=100)
         items = response.get('Items', [])
+        processed_items = []
 
-        if not items:
+        while True:
+            processed_items.extend(items)
+            if 'LastEvaluatedKey' not in response:
+                break
+            response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'], Limit=100)
+            items = response.get('Items', [])
+
+        if not processed_items:
             return {
                 'statusCode': 200,
                 'body': json.dumps({'message': 'No items found in table'})
             }
-
-        processed_items = []
-        for item in items:
-            processed_items.append(item)
-
-        while 'LastEvaluatedKey' in response:
-            response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
-            items.extend(response.get('Items', []))
 
         return {
             'statusCode': 200,
             'body': json.dumps({
                 'message': 'Items recovered successfully',
                 'items': processed_items,
-                'total': len(items)
+                'total': len(processed_items)
             })
         }
 
     except Exception as e:
-        print(f'Error accessing DynamoDB: {str(e)}')
+        logger.error(f'Error accessing DynamoDB: {str(e)}')
         return {
             'statusCode': 500,
-            'body': json.dumps(f'Error listing items: {str(e)}')
+            'body': json.dumps({'error': f'Error listing items: {str(e)}'})
         }
