@@ -68,11 +68,8 @@ hackathon-lambda/
 │   ├── main.py          # Código principal
 │   └── requirements.txt # Dependências
 │
-├── presigned/           # Função Lambda para geração de URLs pré-assinadas
-│   └── lambda_function.py # Código principal
-│
-└── doc/                 # Documentação
-    └── email_screenshot.png
+└── presigned/           # Função Lambda para geração de URLs pré-assinadas
+    └── lambda_function.py # Código principal
 ```
 
 ## Implantação
