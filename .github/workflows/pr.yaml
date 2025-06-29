@@ -1,0 +1,39 @@
+name: Test All Lambdas
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  test-lambdas:
+    name: Rodar testes das Lambdas
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Rodar testes em todas as Lambdas com seus requirements
+        run: |
+          for dir in presigned; do
+            echo "Processando Lambda em: $dir"
+            cd "$dir"
+            
+            if [ -f requirements.txt ]; then
+              echo "Instalando dependências em $dir..."
+              python -m pip install --upgrade pip
+              pip install -r requirements.txt
+            else
+              echo "Nenhum requirements.txt encontrado em $dir. Pulando dependências."
+            fi
+
+            echo "Executando testes em $dir..."
+            pytest || exit 1
+
+            cd ..
+          done

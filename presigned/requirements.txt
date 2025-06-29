@@ -1,0 +1,4 @@
+pytest
+coverage
+moto[s3]
+boto3
