@@ -38,7 +38,7 @@ jobs:
       - name: Compactar Lambda em ZIP
         run: |
           cd presigned
-          zip -r ../presigned.zip .
+          zip -r ../presigned.zip lambda_function.py
           cd ..
 
       - name: Atualizar código da Lambda existente
