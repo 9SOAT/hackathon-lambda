@@ -1,14 +1,12 @@
-name: Deploy Python Lambda
+name: Deploy Lambda
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
   push:
     branches:
       - main
 
 jobs:
-  build-and-deploy:
+  deploy-lambda-code:
     runs-on: ubuntu-latest
 
     permissions:
@@ -17,6 +15,8 @@ jobs:
 
     env:
       AWS_REGION: us-east-1
+      PRESIGNED_URL_FUNCTION_NAME: hackathon_presigned_url
+      EMAIL_NOTIFICATION_FUNCTION_NAME: hackathon_email_notification
 
     steps:
       - name: Checkout do código
@@ -31,25 +31,30 @@ jobs:
       - name: Instalar Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.11'
 
       - name: Compactar Lambda em ZIP
         run: |
-          zip infra/v1/lambda_function.zip lambda/lambda_function.py
+          cd presigned
+          zip -r ../presigned.zip lambda_function.py
+          cd ..
 
-      - name: Configurar Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.10.5
-
-      - name: Inicializar Terraform
+      - name: Atualizar código da Lambda existente
         run: |
-          cd infra/v1
-          terraform init
+          aws lambda update-function-code \
+            --function-name ${{ env.PRESIGNED_URL_FUNCTION_NAME }} \
+            --zip-file fileb://presigned.zip \
+            --region ${{ env.AWS_REGION }}
 
-      - name: Aplicar Terraform (Deploy Lambda)
-        id: apply
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Compacta Email Notification Lambda
         run: |
-          cd infra/v1
-          terraform apply -auto-approve
+          cd notification
+          zip -r ../email_notification.zip .
+          cd ..
+
+      - name: Atualizar código da Lambda Email Notification existente
+        run: |
+          aws lambda update-function-code \
+            --function-name ${{ env.EMAIL_NOTIFICATION_FUNCTION_NAME }} \
+            --zip-file fileb://email_notification.zip \
+            --region ${{ env.AWS_REGION }}
