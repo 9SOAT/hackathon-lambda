@@ -1,8 +1,6 @@
-name: Deploy Presigned Lambda
+name: Deploy Lambda
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
   push:
     branches:
       - main
