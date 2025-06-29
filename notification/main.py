@@ -42,11 +42,11 @@ def lambda_handler(event, context):
 def process_message(message):
     
     try:
-        messageBody = json.loads(message['body'])
-        receiver_email = messageBody["receiver_email"]
-        sender_email = messageBody["sender_email"]
-        template_name = messageBody["template_name"]
-        placeholders = messageBody["placeholders"]
+        message_body = json.loads(message['body'])
+        receiver_email = message_body["receiver_email"]
+        sender_email = message_body["sender_email"]
+        template_name = message_body["template_name"]
+        placeholders = message_body["placeholders"]
 
         return send_templated_email(receiver_email, template_name, sender_email, placeholders)
     except Exception as e:
