@@ -9,6 +9,7 @@ from botocore.exceptions import ClientError
 ses_client = boto3.client('ses')  # Adjust the region if necessary.
 
 def send_templated_email(receiver_email: str, template_name: str, sender_email: str, template_data: dict):
+    print(f"Sending email to {receiver_email} using template {template_name} from {sender_email} with data: {template_data}")
     try:
         response = ses_client.send_templated_email(
             Source=sender_email,
@@ -34,11 +35,18 @@ def send_templated_email(receiver_email: str, template_name: str, sender_email: 
     }
 
 def lambda_handler(event, context):
+    for message in event['Records']:
+        process_message(message)
+    print("Messages processed successfully.")
+
+def process_message(message):
+    
     try:
-        receiver_email = event["receiver_email"]
-        sender_email = event["sender_email"]
-        template_name = event["template_name"]
-        placeholders = event["placeholders"]
+        message_body = json.loads(message['body'])
+        receiver_email = message_body["receiver_email"]
+        sender_email = message_body["sender_email"]
+        template_name = message_body["template_name"]
+        placeholders = message_body["placeholders"]
 
         return send_templated_email(receiver_email, template_name, sender_email, placeholders)
     except Exception as e:
