@@ -1,5 +1,6 @@
 import boto3
 import os
+import logging
 from boto3.dynamodb.conditions import Key
 import json
 
