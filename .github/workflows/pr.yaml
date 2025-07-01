@@ -1,4 +1,4 @@
-name: Test All Lambdas
+name: PR Quality Check
 
 on:
   pull_request:
@@ -6,7 +6,6 @@ on:
 
 jobs:
   test-lambdas:
-    name: Rodar testes e cobertura com SonarCloud
     runs-on: ubuntu-latest
 
     steps:
