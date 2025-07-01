@@ -6,7 +6,7 @@ on:
 
 jobs:
   test-lambdas:
-    name: Rodar testes das Lambdas
+    name: Rodar testes e cobertura com SonarCloud
     runs-on: ubuntu-latest
 
     steps:
@@ -18,22 +18,33 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Rodar testes em todas as Lambdas com seus requirements
+      - name: Rodar testes com cobertura por Lambda
         run: |
-          for dir in presigned; do
+          rm -f .coverage  # limpa qualquer arquivo anterior
+          for dir in presigned notification analytics; do
             echo "Processando Lambda em: $dir"
             cd "$dir"
-            
+
             if [ -f requirements.txt ]; then
-              echo "Instalando dependências em $dir..."
+              echo "Instalando dependências..."
               python -m pip install --upgrade pip
               pip install -r requirements.txt
-            else
-              echo "Nenhum requirements.txt encontrado em $dir. Pulando dependências."
             fi
 
-            echo "Executando testes em $dir..."
-            pytest || exit 1
-
+            echo "Executando testes com coverage..."
+            coverage run -m pytest || exit 1
             cd ..
           done
+
+      - name: Combinar cobertura e gerar XML
+        run: |
+          coverage combine */.coverage
+          coverage report
+          coverage xml
+
+      - name: Rodar SonarCloud Scanner
+        uses: SonarSource/sonarcloud-github-action@v2
+        with:
+          projectBaseDir: .
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
