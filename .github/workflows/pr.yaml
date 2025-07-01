@@ -20,20 +20,18 @@ jobs:
 
       - name: Rodar testes com cobertura por Lambda
         run: |
-          rm -f .coverage  # limpa qualquer arquivo anterior
-          for dir in presigned notification analytics; do
+          rm -f .coverage
+          for dir in presigned; do
             echo "Processando Lambda em: $dir"
-            cd "$dir"
-
-            if [ -f requirements.txt ]; then
+      
+            if [ -f "$dir/requirements.txt" ]; then
               echo "Instalando dependências..."
               python -m pip install --upgrade pip
-              pip install -r requirements.txt
+              pip install -r "$dir/requirements.txt"
             fi
-
+      
             echo "Executando testes com coverage..."
             coverage run --source=$dir -m pytest $dir || exit 1
-            cd ..
           done
 
       - name: Combinar cobertura e gerar XML
