@@ -32,7 +32,7 @@ jobs:
             fi
 
             echo "Executando testes com coverage..."
-            coverage run -m pytest || exit 1
+            coverage run --source=$dir -m pytest $dir || exit 1
             cd ..
           done
 
