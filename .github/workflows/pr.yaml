@@ -34,9 +34,12 @@ jobs:
             coverage run --source=$dir -m pytest $dir || exit 1
           done
 
+      - name: Verificar arquivos de cobertura
+        run: ls -la .coverage*
+
       - name: Combinar cobertura e gerar XML
         run: |
-          coverage combine */.coverage
+          coverage combine
           coverage report
           coverage xml
 
