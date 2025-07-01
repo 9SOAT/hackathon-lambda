@@ -18,28 +18,18 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Rodar testes com cobertura por Lambda
+      - name: Instalar dependências de todas as lambdas
         run: |
-          rm -f .coverage
+          python -m pip install --upgrade pip
           for dir in presigned; do
-            echo "Processando Lambda em: $dir"
-      
             if [ -f "$dir/requirements.txt" ]; then
-              echo "Instalando dependências..."
-              python -m pip install --upgrade pip
               pip install -r "$dir/requirements.txt"
             fi
-      
-            echo "Executando testes com coverage..."
-            coverage run --source=$dir -m pytest $dir || exit 1
           done
 
-      - name: Verificar arquivos de cobertura
-        run: ls -la .coverage*
-
-      - name: Combinar cobertura e gerar XML
+      - name: Rodar testes com coverage
         run: |
-          coverage combine
+          coverage run --source=presigned -m pytest presigned
           coverage report
           coverage xml
 
