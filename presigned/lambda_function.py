@@ -16,7 +16,7 @@ def lambda_handler(event, context):
     try:
         user_id = event['requestContext']['authorizer']['jwt']['claims']['sub']
         timestamp_ms = int(time.time() * 1000)
-        s3_key = f"{user_id}.{timestamp_ms}"
+        s3_key = f"{user_id}/{timestamp_ms}"
         
         logger.info(f'Gerando presigned URL para a key: {s3_key}')
 
