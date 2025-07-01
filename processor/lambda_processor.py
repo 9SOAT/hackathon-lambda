@@ -32,7 +32,6 @@ def lambda_handler(event, context):
             process_message(record)
         except Exception as err:
             logger.error(f"[lambda_handler] Error: {err}", exc_info=True)
-            # Optional: re-raise for retry or send to DLQ
 
 
 def process_message(record):
@@ -55,13 +54,11 @@ def process_message(record):
         prefix, timestamp, _ext = filename.rsplit('.', 2)
     except ValueError:
         logger.error(f"Nome de arquivo inesperado, não foi possível extrair prefix/timestamp: {filename}")
-        # Se não conseguimos nem parsear, não há como continuar
         return
 
     logger.info(f"Iniciando job para {filename} → pasta '{prefix}', arquivo '{timestamp}.zip'")
 
 
-    # Validate metadata before download
     try:
         s3_client.head_object(Bucket=bucket_name, Key=object_key)
     except ClientError as err:
@@ -75,7 +72,6 @@ def process_message(record):
     zip_path, zip_size_bytes  = create_zip_archive(frames_dir, prefix, timestamp)
 
     zip_key = f"{prefix}/{timestamp}.zip"
-    output_s3_uri = f"s3://{OUTPUT_BUCKET}/{zip_key}"
     download_url = generate_s3_presigned_url(OUTPUT_BUCKET, zip_key)
     
     upload_file_to_s3(zip_path, OUTPUT_BUCKET, zip_key)
@@ -248,10 +244,9 @@ def save_metadata(user_uuid: str,input_key: str, output_key: str,status: str = "
 def publish_sns_notification(subject: str, message_body):
     
     try:
-        topic_arn = "arn:aws:sns:us-east-1:897722698720:disparo-de-emails-topic"
-        logger.info(f"Publicando mensagem no tópico SNS: {topic_arn}")
+        logger.info(f"Publicando mensagem no tópico SNS: {SNS_TOPIC_ARN}")
         response = sns_client.publish(
-            TopicArn=topic_arn,
+            TopicArn=SNS_TOPIC_ARN,
             Subject=subject,
             Message=json.dumps(message_body)
         )
