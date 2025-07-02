@@ -20,7 +20,7 @@ jobs:
       - name: Instalar dependências de todas as lambdas
         run: |
           python -m pip install --upgrade pip
-          for dir in presigned; do
+          for dir in presigned notification processor listing; do
             if [ -f "$dir/requirements.txt" ]; then
               pip install -r "$dir/requirements.txt"
             fi
@@ -28,7 +28,7 @@ jobs:
 
       - name: Rodar testes com coverage
         run: |
-          coverage run --source=presigned -m pytest presigned
+          coverage run --source=presigned,notification,processor,listing -m pytest presigned notification processor listing
           coverage report
           coverage xml
 
