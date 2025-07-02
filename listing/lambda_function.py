@@ -13,8 +13,11 @@ def lambda_handler(event, context):
     logger.setLevel(logging.INFO)
 
     try:
-        # Scan with an optional limit
-        response = table.scan(Limit=100)
+        user_id = event['requestContext']['authorizer']['jwt']['claims']['sub']
+
+        response = table.scan(
+            FilterExpression=Key('user_id').eq(user_id),
+        )
         items = response.get('Items', [])
         processed_items = []
 
@@ -22,21 +25,26 @@ def lambda_handler(event, context):
             processed_items.extend(items)
             if 'LastEvaluatedKey' not in response:
                 break
-            response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'], Limit=100)
+            response = table.scan(
+                ExclusiveStartKey=response['LastEvaluatedKey'],
+                FilterExpression=Key('user_id').eq(user_id),
+            )
             items = response.get('Items', [])
 
         if not processed_items:
             return {
                 'statusCode': 200,
-                'body': json.dumps({'message': 'No items found in table'})
+                'body': json.dumps({'message': 'No items found for this user'})
             }
+
+        statusArchive = [{'status': item.get('status')} for item in processed_items]
 
         return {
             'statusCode': 200,
             'body': json.dumps({
-                'message': 'Items recovered successfully',
-                'items': processed_items,
-                'total': len(processed_items)
+                'message': 'Items retrieved successfully',
+                'statusArchive': statusArchive,
+                'total': len(statusArchive)
             })
         }
 
