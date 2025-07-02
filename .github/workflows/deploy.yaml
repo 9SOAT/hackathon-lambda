@@ -58,3 +58,29 @@ jobs:
             --function-name ${{ env.EMAIL_NOTIFICATION_FUNCTION_NAME }} \
             --zip-file fileb://email_notification.zip \
             --region ${{ env.AWS_REGION }}
+
+      - name: Compactar Lambda de Processamento em ZIP
+        run: |
+          cd processor
+          zip -r ../lambda_processor.zip .
+          cd ..
+
+      - name: Atualizar código da Lambda existente
+        run: |
+          aws lambda update-function-code \
+            --function-name ${{ env.PROCESSOR_FUNCTION_NAME }} \
+            --zip-file fileb://lambda_processor.zip \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Compactar Lambda de Busca de Arquivos em ZIP
+        run: |
+          cd listing
+          zip -r ../lambda_function.zip .
+          cd ..
+
+      - name: Atualizar código da Lambda existente
+        run: |
+          aws lambda update-function-code \
+            --function-name ${{ env.LISTING_FUNCTION_NAME }} \
+            --zip-file fileb://lambda_function.zip \
+            --region ${{ env.AWS_REGION }}
