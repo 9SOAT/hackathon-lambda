@@ -15,13 +15,13 @@ logger.setLevel(logging.INFO)
 # AWS clients
 s3_client = boto3.client("s3")
 dynamodb = boto3.resource("dynamodb")
-sns_client = boto3.client("sns")
+sqs_client = boto3.client('sqs')
 
 # Environment variables (set via Terraform or console)
 INPUT_BUCKET = os.getenv("INPUT_BUCKET")
 OUTPUT_BUCKET = os.getenv("OUTPUT_BUCKET")
 DDB_TABLE = os.getenv("DDB_TABLE")
-SNS_TOPIC_ARN = os.getenv("SNS_TOPIC_ARN")
+SQS_QUEUE_URL = os.getenv('SQS_QUEUE_URL') 
 FFMPEG_BIN = "/opt/bin/ffmpeg"
 
 
@@ -32,7 +32,7 @@ def lambda_handler(event, context):
             process_message(record)
         except Exception as err:
             logger.error(f"[lambda_handler] Error: {err}", exc_info=True)
-
+            # Optional: re-raise for retry or send to DLQ
 
 def process_message(record):
     """
@@ -51,14 +51,17 @@ def process_message(record):
 
     filename = os.path.basename(object_key)
     try:
-        prefix, timestamp, _ext = filename.rsplit('.', 2)
+        prefix, timestamp_aux = filename.split('_')
+        timestamp, _ext = timestamp_aux.rsplit('.', 2)
     except ValueError:
         logger.error(f"Nome de arquivo inesperado, não foi possível extrair prefix/timestamp: {filename}")
+        # Se não conseguimos nem parsear, não há como continuar
         return
 
     logger.info(f"Iniciando job para {filename} → pasta '{prefix}', arquivo '{timestamp}.zip'")
 
 
+    # Validate metadata before download
     try:
         s3_client.head_object(Bucket=bucket_name, Key=object_key)
     except ClientError as err:
@@ -88,7 +91,6 @@ def process_message(record):
 
     publish_sns_notification("Processamento concluído", message)
 
-
 def download_file_from_s3(bucket: str, key: str, local_dir: str = "/tmp") -> str:
     """
     Baixa um arquivo do S3 para um diretório local.
@@ -116,7 +118,6 @@ def download_file_from_s3(bucket: str, key: str, local_dir: str = "/tmp") -> str
     except Exception as e:
         logger.error(f"Ocorreu um erro inesperado durante o download: {e}")
         return None
-
 
 def extract_frames_and_count(video_path: str, prefix: str, timestamp: str) -> tuple[str, int]:
     """
@@ -150,7 +151,6 @@ def extract_frames_and_count(video_path: str, prefix: str, timestamp: str) -> tu
 
     return out_dir, num_frames
 
-
 def create_zip_archive(frames_dir: str, prefix: str, timestamp: str) -> tuple[str, int]:
     """
     Cria um arquivo ZIP compactado a partir de um diretório de imagens.
@@ -183,7 +183,6 @@ def create_zip_archive(frames_dir: str, prefix: str, timestamp: str) -> tuple[st
         logger.error(f"Ocorreu um erro inesperado ao criar o ZIP: {e}")
         return None, 0
 
-
 def upload_file_to_s3(file_path: str, bucket: str, key: str) -> bool:
     """
     Realiza o upload de um arquivo local para o S3.
@@ -205,7 +204,6 @@ def upload_file_to_s3(file_path: str, bucket: str, key: str) -> bool:
     except Exception as e:
         logger.error(f"Ocorreu um erro inesperado durante o upload: {e}")
         return False
-
     
 def save_metadata(user_uuid: str,input_key: str, output_key: str,status: str = "COMPLETED") -> bool:
     """
@@ -240,18 +238,17 @@ def save_metadata(user_uuid: str,input_key: str, output_key: str,status: str = "
         logger.error(f"Um erro inesperado ocorreu: {e}")
         return False
 
-
 def publish_sns_notification(subject: str, message_body):
     
     try:
-        logger.info(f"Publicando mensagem no tópico SNS: {SNS_TOPIC_ARN}")
-        response = sns_client.publish(
-            TopicArn=SNS_TOPIC_ARN,
-            Subject=subject,
-            Message=json.dumps(message_body)
+        response = sqs_client.send_message(
+            QueueUrl=SQS_QUEUE_URL,
+            MessageBody=json.dumps(message_body)
         )
+
         message_id = response.get("MessageId")
-        logger.info(f"Mensagem publicada com sucesso. MessageId: {message_id}")
+        logger.info(f"Mensagem enviada com sucesso para SQS. MessageId: {message_id}")
+
         return message_id
     except Exception as e:
         logger.error(f"Um erro inesperado ocorreu ao publicar no SNS: {e}")
@@ -262,7 +259,6 @@ def generate_timestamp() -> str:
     Gera um timestamp em string no formato DDMMYYYYHHMMSS.
     """
     return datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-
     
 def formatar_tamanho(size_bytes: int) -> str:
     """Converte um tamanho em bytes para um formato legível (KB, MB, GB)."""
