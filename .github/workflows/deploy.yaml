@@ -17,6 +17,8 @@ jobs:
       AWS_REGION: us-east-1
       PRESIGNED_URL_FUNCTION_NAME: hackathon_presigned_url
       EMAIL_NOTIFICATION_FUNCTION_NAME: hackathon_email_notification
+      PROCESSOR_FUNCTION_NAME: hackthon_video_processor
+      LISTING_FUNCTION_NAME: hackthon_listing_lambda
 
     steps:
       - name: Checkout do código
@@ -33,13 +35,13 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Compactar Lambda em ZIP
+      - name: Compactar Lambda de presigned
         run: |
           cd presigned
           zip -r ../presigned.zip lambda_function.py
           cd ..
 
-      - name: Atualizar código da Lambda existente
+      - name: Atualizar código da Lambda de presigned
         run: |
           aws lambda update-function-code \
             --function-name ${{ env.PRESIGNED_URL_FUNCTION_NAME }} \
@@ -52,9 +54,35 @@ jobs:
           zip -r ../email_notification.zip .
           cd ..
 
-      - name: Atualizar código da Lambda Email Notification existente
+      - name: Atualizar código da Lambda Email Notification
         run: |
           aws lambda update-function-code \
             --function-name ${{ env.EMAIL_NOTIFICATION_FUNCTION_NAME }} \
             --zip-file fileb://email_notification.zip \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Compactar Lambda de Processamento
+        run: |
+          cd processor
+          zip -r ../lambda_processor.zip .
+          cd ..
+
+      - name: Atualizar código da Lambda de Processamento
+        run: |
+          aws lambda update-function-code \
+            --function-name ${{ env.PROCESSOR_FUNCTION_NAME }} \
+            --zip-file fileb://lambda_processor.zip \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Compactar Lambda de listagem de Arquivos em ZIP
+        run: |
+          cd listing
+          zip -r ../lambda_function.zip .
+          cd ..
+
+      - name: Atualizar código da Lambda de listagem
+        run: |
+          aws lambda update-function-code \
+            --function-name ${{ env.LISTING_FUNCTION_NAME }} \
+            --zip-file fileb://lambda_function.zip \
             --region ${{ env.AWS_REGION }}
