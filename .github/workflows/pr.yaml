@@ -1,0 +1,40 @@
+name: PR Quality Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  test-lambdas:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependências de todas as lambdas
+        run: |
+          python -m pip install --upgrade pip
+          for dir in presigned; do
+            if [ -f "$dir/requirements.txt" ]; then
+              pip install -r "$dir/requirements.txt"
+            fi
+          done
+
+      - name: Rodar testes com coverage
+        run: |
+          coverage run --source=presigned -m pytest presigned
+          coverage report
+          coverage xml
+
+      - name: Rodar SonarCloud Scanner
+        uses: SonarSource/sonarcloud-github-action@v2
+        with:
+          projectBaseDir: .
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
