@@ -163,17 +163,13 @@ def test_save_metadata_error(monkeypatch):
     assert lambda_processor.save_metadata("uuid", "in", "out") is False
 
 def test_publish_sns_notification_success(monkeypatch, caplog):
-    # Cria fake do sqs_client
     class FakeSQS:
         def send_message(self, QueueUrl=None, MessageBody=None):
-            # Confirma que o URL veio corretamente
             assert QueueUrl == "https://queue.test/url"
-            # O body deve ser JSON válido
             assert isinstance(MessageBody, str)
             json.loads(MessageBody)
             return {"MessageId": "abc123"}
 
-    # Patcha o client e a URL lida na importação do módulo
     monkeypatch.setattr(lambda_processor, "sqs_client", FakeSQS(), raising=True)
     monkeypatch.setattr(lambda_processor, "SQS_QUEUE_URL", "https://queue.test/url", raising=True)
 
@@ -199,7 +195,6 @@ def test_publish_sns_notification_error(monkeypatch, caplog):
 
 
 def test_process_message_invalid_filename(monkeypatch):
-        # filename sem 2 pontos deve cair no ValueError e retornar None
     record = {
         "body": json.dumps({
             "Records": [
@@ -207,11 +202,9 @@ def test_process_message_invalid_filename(monkeypatch):
             ]
         })
     }
-    # Não deve lançar, apenas retornar None
     assert lambda_processor.process_message(record) is None
 
 def test_process_message_success(monkeypatch):
-    # Simula um evento com filename correto: prefix.timestamp.ext
     key = "meuvideo_161803398.mp4"
     record = {
         "body": json.dumps({
@@ -222,65 +215,53 @@ def test_process_message_success(monkeypatch):
     }
     calls = {}
 
-    # head_object OK
     class FakeS3:
         def head_object(self, **kw):
             calls['head'] = kw
     monkeypatch.setattr(lambda_processor, 's3_client', FakeS3(), raising=False)
 
-    # download_file_from_s3
     def fake_download(bucket, k, dest):
         calls['download'] = (bucket, k, dest)
         return "/tmp/test_video.mp4"
     monkeypatch.setattr(lambda_processor, 'download_file_from_s3', fake_download)
 
-    # extract_frames_and_count
     def fake_extract(path, prefix, ts):
         calls['extract'] = (path, prefix, ts)
         return ("/tmp/frames", 4)
     monkeypatch.setattr(lambda_processor, 'extract_frames_and_count', fake_extract)
 
-    # create_zip_archive
     def fake_zip(frames_dir, prefix, ts):
         calls['zip'] = (frames_dir, prefix, ts)
         return ("/tmp/archive.zip", 2048)
     monkeypatch.setattr(lambda_processor, 'create_zip_archive', fake_zip)
 
-    # generate_s3_presigned_url (duas vezes)
     def fake_presign(bucket, k):
         calls.setdefault('presign', []).append((bucket, k))
         return "https://download.link"
     monkeypatch.setattr(lambda_processor, 'generate_s3_presigned_url', fake_presign)
 
-    # upload_file_to_s3
     def fake_upload(path, bucket, k):
         calls['upload'] = (path, bucket, k)
         return True
     monkeypatch.setattr(lambda_processor, 'upload_file_to_s3', fake_upload)
 
-    # save_metadata
     def fake_save(pref, inp, url):
         calls['save'] = (pref, inp, url)
         return True
     monkeypatch.setattr(lambda_processor, 'save_metadata', fake_save)
 
-    # publish_sns_notification
     def fake_publish(subject, msg):
         calls['publish'] = (subject, msg)
         return "msg-xyz"
     monkeypatch.setattr(lambda_processor, 'publish_sns_notification', fake_publish)
 
-    # Executa
     lambda_processor.process_message(record)
 
-    # Validações
-    # parsing: prefix="meuvideo", timestamp="161803398"
     assert calls['head'] == {'Bucket': 'src-bucket', 'Key': key}
     assert calls['download'][0:2] == ("src-bucket", key)
     assert calls['extract'] == ("/tmp/test_video.mp4", "meuvideo", "161803398")
     assert calls['zip'] == ("/tmp/frames", "meuvideo", "161803398")
 
-    # duas gerações de URL: antes do upload e para log
     expect_key = "meuvideo/161803398.zip"
     assert calls['presign'][0] == (lambda_processor.OUTPUT_BUCKET, expect_key)
     assert calls['presign'][1] == (lambda_processor.OUTPUT_BUCKET, expect_key)
