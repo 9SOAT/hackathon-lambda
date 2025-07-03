@@ -1,1 +1,5 @@
 boto3==1.28.73
+pytest
+moto[s3,dynamodb,sns]
+boto3
+pyfakefs
