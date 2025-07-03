@@ -179,7 +179,6 @@ def test_publish_sns_notification_success(monkeypatch, caplog):
     assert "Mensagem enviada com sucesso para SQS. MessageId: abc123" in caplog.text
 
 
-
 def test_publish_sns_notification_error(monkeypatch, caplog):
     class FakeSNS:
         def publish(self, TopicArn=None, Message=None, Subject=None):
