@@ -8,10 +8,11 @@ jobs:
   test-lambdas:
     runs-on: ubuntu-latest
 
-    AWS_ACCESS_KEY_ID: dummy
-    AWS_SECRET_ACCESS_KEY: dummy
-    AWS_DEFAULT_REGION: us-east-1
-
+    env:
+      AWS_ACCESS_KEY_ID: dummy
+      AWS_SECRET_ACCESS_KEY: dummy
+      AWS_DEFAULT_REGION: us-east-1
+      
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
