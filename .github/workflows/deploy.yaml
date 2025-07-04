@@ -14,7 +14,6 @@ jobs:
       contents: read
 
     env:
-      AWS_REGION: us-east-1
       PRESIGNED_URL_FUNCTION_NAME: hackathon_presigned_url
       EMAIL_NOTIFICATION_FUNCTION_NAME: hackathon_email_notification
       PROCESSOR_FUNCTION_NAME: hackathon_video_processor
