@@ -55,7 +55,7 @@ def process_message(record):
         timestamp, _ext = timestamp_aux.rsplit('.', 2)
     except ValueError:
         message = {"receiver_email":"matheus.francesquini@gmail.com","sender_email":"matheus.francesquini@gmail.com","template_name":"FAILURE_EMAIL_TEMPLATE",
-               "placeholders":{"NAME": "Matheus", "PROCESS_DATE":generate_timestamp(),"FILE_NAME":filename,"ERROR_CODE": 400, "ERROR_MESSAGE":"O nome do arquivo enviado é inválido. Por favor, ajuste o nome para que siga o padrão."}}
+               "placeholders":{"FIRST_NAME": "Matheus", "PROCESS_DATE":generate_timestamp(),"FILE_NAME":filename,"ERROR_CODE": 400, "ERROR_MESSAGE":"O nome do arquivo enviado é inválido. Por favor, ajuste o nome para que siga o padrão."}}
         
         publish_sns_notification("Não foi possível processar o arquivo.", message)
 
