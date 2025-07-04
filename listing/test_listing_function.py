@@ -1,85 +1,23 @@
 import unittest
 from unittest.mock import patch, MagicMock
+import lambda_function
 import json
-import os
-
-from lambda_listing import lambda_handler
 
 class TestLambdaHandler(unittest.TestCase):
 
-    @patch('boto3.resource')
-    @patch('os.getenv')
-    def test_lambda_handler_no_items(self, mock_getenv, mock_boto3_resource):
-        mock_getenv.return_value = 'test_table'
-
+    @patch('lambda_function.boto3.resource')
+    @patch.dict('os.environ', {'DDB_TABLE': 'MockTable'})
+    def test_items_found(self, mock_boto3_resource):
         mock_table = MagicMock()
-        mock_boto3_resource.return_value.Table.return_value = mock_table
-
-        event = {
-            'requestContext': {
-                'authorizer': {
-                    'jwt': {
-                        'claims': {
-                            'sub': 'test_user_id'
-                        }
-                    }
-                }
-            }
-        }
-
-        mock_table.scan.return_value = {
-            'Items': [],
-        }
-
-        response = lambda_handler(event, None)
-
-        self.assertEqual(response['statusCode'], 200)
-        self.assertEqual(json.loads(response['body']), {'message': 'No items found for this user'})
-
-    @patch('boto3.resource')
-    @patch('os.getenv')
-    def test_lambda_handler_with_items(self, mock_getenv, mock_boto3_resource):
-        mock_getenv.return_value = 'test_table'
-
-        mock_table = MagicMock()
-        mock_boto3_resource.return_value.Table.return_value = mock_table
-
-        event = {
-            'requestContext': {
-                'authorizer': {
-                    'jwt': {
-                        'claims': {
-                            'sub': 'test_user_id'
-                        }
-                    }
-                }
-            }
-        }
-
         mock_table.scan.side_effect = [
             {
-                'Items': [{'status': 'active'}, {'status': 'inactive'}],
-                'LastEvaluatedKey': {'some_key': 'some_value'}
+                'Items': [{'user_id': 'abc123', 'status': 'active'}],
+                'LastEvaluatedKey': {'someKey': 'value'}
             },
             {
-                'Items': [{'status': 'pending'}],
+                'Items': [{'user_id': 'abc123', 'status': 'archived'}]
             }
         ]
-
-        response = lambda_handler(event, None)
-
-        self.assertEqual(response['statusCode'], 200)
-        body = json.loads(response['body'])
-        self.assertEqual(body['message'], 'Items retrieved successfully')
-        self.assertEqual(body['statusArchive'], ['active', 'inactive', 'pending'])
-        self.assertEqual(body['total'], 3)
-
-    @patch('boto3.resource')
-    @patch('os.getenv')
-    def test_lambda_handler_exception(self, mock_getenv, mock_boto3_resource):
-        mock_getenv.return_value = 'test_table'
-
-        mock_table = MagicMock()
         mock_boto3_resource.return_value.Table.return_value = mock_table
 
         event = {
@@ -87,19 +25,66 @@ class TestLambdaHandler(unittest.TestCase):
                 'authorizer': {
                     'jwt': {
                         'claims': {
-                            'sub': 'test_user_id'
+                            'sub': 'abc123'
                         }
                     }
                 }
             }
         }
 
-        mock_table.scan.side_effect = Exception("DynamoDB error")
+        result = lambda_function.lambda_handler(event, None)
+        body = json.loads(result['body'])
 
-        response = lambda_handler(event, None)
+        self.assertEqual(result['statusCode'], 200)
+        self.assertEqual(body['total'], 2)
+        self.assertEqual(body['statusArchive'][0]['status'], 'active')
+        self.assertEqual(body['statusArchive'][1]['status'], 'archived')
 
-        self.assertEqual(response['statusCode'], 500)
-        self.assertIn('Error listing items:', json.loads(response['body'])['error'])
+    @patch('lambda_function.boto3.resource')
+    @patch.dict('os.environ', {'DDB_TABLE': 'MockTable'})
+    def test_no_items_found(self, mock_boto3_resource):
+        mock_table = MagicMock()
+        mock_table.scan.return_value = {'Items': []}
+        mock_boto3_resource.return_value.Table.return_value = mock_table
+
+        event = {
+            'requestContext': {
+                'authorizer': {
+                    'jwt': {
+                        'claims': {
+                            'sub': 'user456'
+                        }
+                    }
+                }
+            }
+        }
+
+        result = lambda_function.lambda_handler(event, None)
+        body = json.loads(result['body'])
+
+        self.assertEqual(result['statusCode'], 200)
+        self.assertIn('No items found', body['message'])
+
+    @patch('lambda_function.boto3.resource', side_effect=Exception('DynamoDB error'))
+    @patch.dict('os.environ', {'DDB_TABLE': 'MockTable'})
+    def test_error_handling(self, mock_boto3_resource):
+        event = {
+            'requestContext': {
+                'authorizer': {
+                    'jwt': {
+                        'claims': {
+                            'sub': 'user789'
+                        }
+                    }
+                }
+            }
+        }
+
+        result = lambda_function.lambda_handler(event, None)
+        body = json.loads(result['body'])
+
+        self.assertEqual(result['statusCode'], 500)
+        self.assertIn('Error listing items', body['error'])
 
 if __name__ == '__main__':
     unittest.main()
