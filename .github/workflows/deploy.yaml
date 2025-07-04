@@ -77,12 +77,12 @@ jobs:
       - name: Compactar Lambda de listagem de Arquivos em ZIP
         run: |
           cd listing
-          zip -r ../lambda_function.zip .
+          zip -r ../lambda_listing.zip .
           cd ..
 
       - name: Atualizar código da Lambda de listagem
         run: |
           aws lambda update-function-code \
             --function-name ${{ env.LISTING_FUNCTION_NAME }} \
-            --zip-file fileb://lambda_function.zip \
+            --zip-file fileb://lambda_listing.zip \
             --region ${{ env.AWS_REGION }}
