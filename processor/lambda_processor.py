@@ -54,6 +54,11 @@ def process_message(record):
         prefix, timestamp_aux = filename.split('_')
         timestamp, _ext = timestamp_aux.rsplit('.', 2)
     except ValueError:
+        message = {"receiver_email":"matheus.francesquini@gmail.com","sender_email":"matheus.francesquini@gmail.com","template_name":"FAILURE_EMAIL_TEMPLATE",
+               "placeholders":{"FIRST_NAME": "Matheus", "PROCESS_DATE":generate_timestamp(),"FILE_NAME":filename,"ERROR_CODE": 400, "ERROR_MESSAGE":"O nome do arquivo enviado é inválido. Por favor, ajuste o nome para que siga o padrão."}}
+        
+        publish_sns_notification("Não foi possível processar o arquivo.", message)
+
         logger.error(f"Nome de arquivo inesperado, não foi possível extrair prefix/timestamp: {filename}")
         # Se não conseguimos nem parsear, não há como continuar
         return
