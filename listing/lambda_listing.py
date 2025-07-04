@@ -1,56 +1,90 @@
-import boto3
-import os
-import logging
-from boto3.dynamodb.conditions import Key
+import unittest
+from unittest.mock import patch, MagicMock
+import lambda_function
 import json
 
-def lambda_handler(event, context):
-    dynamodb = boto3.resource('dynamodb')
-    table_name = os.getenv("DDB_TABLE")
-    table = dynamodb.Table(table_name)
+class TestLambdaHandler(unittest.TestCase):
 
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-
-    try:
-        user_id = event['requestContext']['authorizer']['jwt']['claims']['sub']
-
-        response = table.scan(
-            FilterExpression=Key('user_id').eq(user_id),
-        )
-        items = response.get('Items', [])
-        processed_items = []
-
-        while True:
-            processed_items.extend(items)
-            if 'LastEvaluatedKey' not in response:
-                break
-            response = table.scan(
-                ExclusiveStartKey=response['LastEvaluatedKey'],
-                FilterExpression=Key('user_id').eq(user_id),
-            )
-            items = response.get('Items', [])
-
-        if not processed_items:
-            return {
-                'statusCode': 200,
-                'body': json.dumps({'message': 'No items found for this user'})
+    @patch('lambda_function.boto3.resource')
+    @patch.dict('os.environ', {'DDB_TABLE': 'MockTable'})
+    def test_items_found(self, mock_boto3_resource):
+        mock_table = MagicMock()
+        mock_table.scan.side_effect = [
+            {
+                'Items': [{'user_id': 'abc123', 'status': 'active'}],
+                'LastEvaluatedKey': {'someKey': 'value'}
+            },
+            {
+                'Items': [{'user_id': 'abc123', 'status': 'archived'}]
             }
+        ]
+        mock_boto3_resource.return_value.Table.return_value = mock_table
 
-        statusArchive = [{'status': item.get('status')} for item in processed_items]
-
-        return {
-            'statusCode': 200,
-            'body': json.dumps({
-                'message': 'Items retrieved successfully',
-                'statusArchive': statusArchive,
-                'total': len(statusArchive)
-            })
+        event = {
+            'requestContext': {
+                'authorizer': {
+                    'jwt': {
+                        'claims': {
+                            'sub': 'abc123'
+                        }
+                    }
+                }
+            }
         }
 
-    except Exception as e:
-        logger.error(f'Error accessing DynamoDB: {str(e)}')
-        return {
-            'statusCode': 500,
-            'body': json.dumps({'error': f'Error listing items: {str(e)}'})
+        result = lambda_function.lambda_handler(event, None)
+        body = json.loads(result['body'])
+
+        self.assertEqual(result['statusCode'], 200)
+        self.assertEqual(body['total'], 2)
+        self.assertEqual(body['statusArchive'][0]['status'], 'active')
+        self.assertEqual(body['statusArchive'][1]['status'], 'archived')
+
+    @patch('lambda_function.boto3.resource')
+    @patch.dict('os.environ', {'DDB_TABLE': 'MockTable'})
+    def test_no_items_found(self, mock_boto3_resource):
+        mock_table = MagicMock()
+        mock_table.scan.return_value = {'Items': []}
+        mock_boto3_resource.return_value.Table.return_value = mock_table
+
+        event = {
+            'requestContext': {
+                'authorizer': {
+                    'jwt': {
+                        'claims': {
+                            'sub': 'user456'
+                        }
+                    }
+                }
+            }
         }
+
+        result = lambda_function.lambda_handler(event, None)
+        body = json.loads(result['body'])
+
+        self.assertEqual(result['statusCode'], 200)
+        self.assertIn('No items found', body['message'])
+
+    @patch('lambda_function.boto3.resource', side_effect=Exception('DynamoDB error'))
+    @patch.dict('os.environ', {'DDB_TABLE': 'MockTable'})
+    def test_error_handling(self, mock_boto3_resource):
+        event = {
+            'requestContext': {
+                'authorizer': {
+                    'jwt': {
+                        'claims': {
+                            'sub': 'user789'
+                        }
+                    }
+                }
+            }
+        }
+
+        result = lambda_function.lambda_handler(event, None)
+        body = json.loads(result['body'])
+
+        self.assertEqual(result['statusCode'], 500)
+        self.assertIn('Error listing items', body['error'])
+
+if __name__ == '__main__':
+    unittest.main()
