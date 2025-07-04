@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 import json
 import os
 
-from lambda_function import lambda_handler
+from lambda_listing import lambda_handler
 
 class TestLambdaHandler(unittest.TestCase):
 
