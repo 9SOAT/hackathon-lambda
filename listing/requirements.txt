@@ -1,1 +1,4 @@
-boto3==1.28.73
+pytest
+coverage
+moto[s3]
+boto3
