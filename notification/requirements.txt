@@ -1,1 +1,3 @@
+pytest
+coverage
 boto3==1.28.73
