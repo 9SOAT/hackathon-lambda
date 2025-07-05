@@ -16,7 +16,7 @@ def lambda_handler(event, context):
         user_id = event['requestContext']['authorizer']['jwt']['claims']['sub']
 
         response = table.scan(
-            FilterExpression=Key('user_id').eq(user_id),
+            FilterExpression=Key('user_uuid').eq(user_id),
         )
         items = response.get('Items', [])
         processed_items = []
@@ -27,7 +27,7 @@ def lambda_handler(event, context):
                 break
             response = table.scan(
                 ExclusiveStartKey=response['LastEvaluatedKey'],
-                FilterExpression=Key('user_id').eq(user_id),
+                FilterExpression=Key('user_uuid').eq(user_id),
             )
             items = response.get('Items', [])
 
@@ -37,7 +37,12 @@ def lambda_handler(event, context):
                 'body': json.dumps({'message': 'No items found for this user'})
             }
 
-        statusArchive = [{'status': item.get('status')} for item in processed_items]
+        statusArchive = [{
+            'status': item.get('status'),
+            'timestamp': item.get('timestamp'),
+            'input_key': item.get('input_key'),
+            'output_key': item.get('output_key')
+        } for item in processed_items]
 
         return {
             'statusCode': 200,
