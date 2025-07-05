@@ -19,6 +19,7 @@ jobs:
       EMAIL_NOTIFICATION_FUNCTION_NAME: hackathon_email_notification
       PROCESSOR_FUNCTION_NAME: hackathon_video_processor
       LISTING_FUNCTION_NAME: hackathon_listing_lambda
+      PRE_SIGN_UP_FUNCTION_NAME: hackathon_pre_sign_up
 
     steps:
       - name: Checkout do código
@@ -85,4 +86,17 @@ jobs:
           aws lambda update-function-code \
             --function-name ${{ env.LISTING_FUNCTION_NAME }} \
             --zip-file fileb://lambda_listing.zip \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Compactar Lambda pre sign up
+        run: |
+          cd pre_sign_up
+          zip -r ../pre_sign_up.zip .
+          cd ..
+
+      - name: Atualizar código da Lambda pre sign up
+        run: |
+          aws lambda update-function-code \
+            --function-name ${{ env.PRE_SIGN_UP_FUNCTION_NAME }} \
+            --zip-file fileb://pre_sign_up.zip \
             --region ${{ env.AWS_REGION }}
