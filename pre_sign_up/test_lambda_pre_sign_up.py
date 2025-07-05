@@ -1,6 +1,6 @@
 import json
 import pytest
-from main import lambda_handler
+from lambda_pre_sign_up import lambda_handler
 
 def test_adiciona_email_nos_claims_do_token():
     # Arrange
