@@ -1,6 +1,4 @@
 import os
-
-import os
 import zipfile
 import pytest
 import lambda_processor
@@ -201,7 +199,44 @@ def test_process_message_invalid_filename(monkeypatch):
             ]
         })
     }
-    assert lambda_processor.process_message(record) is None
+
+    calls = {}
+
+    # Mock para o get_user_email_from_s3_metadata
+    class FakeS3:
+        def head_object(self, **kw):
+            calls['head'] = kw
+            return {
+                'Metadata': {
+                    'user-email': 'usuario@exemplo.com'
+                }
+            }
+    monkeypatch.setattr(lambda_processor, 's3_client', FakeS3(), raising=False)
+
+    # Configurar variáveis de ambiente necessárias
+    monkeypatch.setattr(lambda_processor, 'SENDER_EMAIL', 'sender@exemplo.com')
+
+    # Mock para a função publish_sns_notification
+    def fake_publish(subject, msg):
+        calls['publish'] = (subject, msg)
+        return "msg-id-123"
+    monkeypatch.setattr(lambda_processor, 'publish_sns_notification', fake_publish)
+
+    # Mock para generate_timestamp
+    def fake_timestamp():
+        return "01/07/2025 14:30:00"
+    monkeypatch.setattr(lambda_processor, 'generate_timestamp', fake_timestamp)
+
+    result = lambda_processor.process_message(record)
+
+    # Verificações
+    assert result is None
+    assert 'head' in calls
+    assert 'publish' in calls
+    assert calls['publish'][0] == "Não foi possível processar o arquivo."
+    assert 'usuario@exemplo.com' in str(calls['publish'][1])
+    assert 'ERROR_MESSAGE' in str(calls['publish'][1])
+    assert 'badfilenamemp4' in str(calls['publish'][1])
 
 def test_process_message_success(monkeypatch):
     key = "meuvideo_161803398.mp4"
@@ -217,7 +252,21 @@ def test_process_message_success(monkeypatch):
     class FakeS3:
         def head_object(self, **kw):
             calls['head'] = kw
+            # Adiciona resposta mockada com metadados incluindo email do usuário
+            return {
+                'ContentLength': 1024,
+                'ContentType': 'video/mp4',
+                'Metadata': {
+                    'user-email': 'usuario@exemplo.com',
+                    'user-id': 'user-123456'
+                }
+            }
     monkeypatch.setattr(lambda_processor, 's3_client', FakeS3(), raising=False)
+
+    # Configure variáveis de ambiente necessárias
+    monkeypatch.setattr(lambda_processor, 'SENDER_EMAIL', 'sender@exemplo.com')
+    monkeypatch.setattr(lambda_processor, 'OUTPUT_BUCKET', 'output-bucket')
+    monkeypatch.setattr(lambda_processor, 'SQS_QUEUE_URL', 'https://sqs.region.amazonaws.com/123456789/queue')
 
     def fake_download(bucket, k, dest):
         calls['download'] = (bucket, k, dest)
@@ -268,3 +317,4 @@ def test_process_message_success(monkeypatch):
     assert calls['upload'] == ("/tmp/archive.zip", lambda_processor.OUTPUT_BUCKET, expect_key)
     assert calls['save'] == ("meuvideo", f"s3://src-bucket/{key}", "https://download.link")
     assert calls['publish'][0] == "Processamento concluído"
+
