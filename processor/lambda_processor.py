@@ -57,8 +57,8 @@ def process_message(record):
     except ValueError:
         message = {"receiver_email":user_email,"sender_email":SENDER_EMAIL,"template_name":"FAILURE_EMAIL_TEMPLATE",
                "placeholders":{"FIRST_NAME": "Matheus", "PROCESS_DATE":generate_timestamp(),"FILE_NAME":filename,"ERROR_CODE": 400, "ERROR_MESSAGE":"O nome do arquivo enviado é inválido. Por favor, ajuste o nome para que siga o padrão."}}
-        
-        publish_sns_notification("Não foi possível processar o arquivo.", message)
+
+        publish_sqs_notification(message)
 
         logger.error(f"Nome de arquivo inesperado, não foi possível extrair prefix/timestamp: {filename}")
         # Se não conseguimos nem parsear, não há como continuar
@@ -86,7 +86,7 @@ def process_message(record):
     message = {"receiver_email":user_email,"sender_email":SENDER_EMAIL,"template_name":"SUCCESS_EMAIL_TEMPLATE",
                "placeholders":{"FIRST_NAME":"Matheus","FILE_NAME":download_url,"PROCESS_DATE":generate_timestamp(),"FILE_SIZE":formatar_tamanho(zip_size_bytes),"RECORDS_COUNT": num_frames}}
 
-    publish_sns_notification("Processamento concluído", message)
+    publish_sqs_notification(message)
 
 def get_user_email_from_s3_metadata(bucket: str, key: str) -> str:
     try:
@@ -97,7 +97,7 @@ def get_user_email_from_s3_metadata(bucket: str, key: str) -> str:
         logger.error(f"HeadObject failed: {error_code}")
         raise
 
-def download_file_from_s3(bucket: str, key: str, local_dir: str = "/tmp") -> str:
+def download_file_from_s3(bucket: str, key: str, local_dir: str = "/tmp") -> str | None:
     """
     Baixa um arquivo do S3 para um diretório local.
 
@@ -244,7 +244,7 @@ def save_metadata(user_uuid: str,input_key: str, output_key: str,status: str = "
         logger.error(f"Um erro inesperado ocorreu: {e}")
         return False
 
-def publish_sns_notification(subject: str, message_body):
+def publish_sqs_notification(message_body):
     
     try:
         response = sqs_client.send_message(

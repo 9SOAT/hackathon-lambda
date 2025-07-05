@@ -171,7 +171,7 @@ def test_publish_sns_notification_success(monkeypatch, caplog):
     monkeypatch.setattr(lambda_processor, "sqs_client", FakeSQS(), raising=True)
     monkeypatch.setattr(lambda_processor, "SQS_QUEUE_URL", "https://queue.test/url", raising=True)
 
-    result = lambda_processor.publish_sns_notification("QualquerAssunto", {"foo": "bar"})
+    result = lambda_processor.publish_sqs_notification({"foo": "bar"})
 
     assert result == "abc123"
     assert "Mensagem enviada com sucesso para SQS. MessageId: abc123" in caplog.text
@@ -185,7 +185,7 @@ def test_publish_sns_notification_error(monkeypatch, caplog):
     monkeypatch.setenv("SQS_QUEUE_URL", "arn:aws:sns:us-east-1:123456789012:MeuTopico")
     monkeypatch.setattr(lambda_processor, "sqs_client", FakeSNS(), raising=True)
 
-    msg_id = lambda_processor.publish_sns_notification("Assunto Teste", {"foo": "bar"})
+    msg_id = lambda_processor.publish_sqs_notification({"foo": "bar"})
 
     assert msg_id is None
     assert "Um erro inesperado ocorreu ao publicar no SNS" in caplog.text
@@ -216,11 +216,11 @@ def test_process_message_invalid_filename(monkeypatch):
     # Configurar variáveis de ambiente necessárias
     monkeypatch.setattr(lambda_processor, 'SENDER_EMAIL', 'sender@exemplo.com')
 
-    # Mock para a função publish_sns_notification
-    def fake_publish(subject, msg):
-        calls['publish'] = (subject, msg)
+    # Mock para a função publish_sqs_notification
+    def fake_publish(msg):
+        calls['publish'] = (msg)
         return "msg-id-123"
-    monkeypatch.setattr(lambda_processor, 'publish_sns_notification', fake_publish)
+    monkeypatch.setattr(lambda_processor, 'publish_sqs_notification', fake_publish)
 
     # Mock para generate_timestamp
     def fake_timestamp():
@@ -233,10 +233,11 @@ def test_process_message_invalid_filename(monkeypatch):
     assert result is None
     assert 'head' in calls
     assert 'publish' in calls
-    assert calls['publish'][0] == "Não foi possível processar o arquivo."
-    assert 'usuario@exemplo.com' in str(calls['publish'][1])
-    assert 'ERROR_MESSAGE' in str(calls['publish'][1])
-    assert 'badfilenamemp4' in str(calls['publish'][1])
+    assert 'usuario@exemplo.com' in str(calls['publish']['receiver_email'])
+    assert 'badfilenamemp4' in str(calls['publish']['placeholders']['FILE_NAME'])
+    assert 'O nome do arquivo enviado é inválido. Por favor, ajuste o nome para que siga o padrão.' in str(
+        calls['publish']['placeholders']['ERROR_MESSAGE']
+    )
 
 def test_process_message_success(monkeypatch):
     key = "meuvideo_161803398.mp4"
@@ -298,10 +299,10 @@ def test_process_message_success(monkeypatch):
         return True
     monkeypatch.setattr(lambda_processor, 'save_metadata', fake_save)
 
-    def fake_publish(subject, msg):
-        calls['publish'] = (subject, msg)
+    def fake_publish(msg):
+        calls['publish'] = (msg)
         return "msg-xyz"
-    monkeypatch.setattr(lambda_processor, 'publish_sns_notification', fake_publish)
+    monkeypatch.setattr(lambda_processor, 'publish_sqs_notification', fake_publish)
 
     lambda_processor.process_message(record)
 
@@ -316,5 +317,4 @@ def test_process_message_success(monkeypatch):
 
     assert calls['upload'] == ("/tmp/archive.zip", lambda_processor.OUTPUT_BUCKET, expect_key)
     assert calls['save'] == ("meuvideo", f"s3://src-bucket/{key}", "https://download.link")
-    assert calls['publish'][0] == "Processamento concluído"
 

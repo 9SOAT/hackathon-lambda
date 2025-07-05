@@ -37,7 +37,7 @@ def lambda_handler(event, context):
                 'body': json.dumps({'message': 'No items found for this user'})
             }
 
-        statusArchive = [{
+        status_archive = [{
             'status': item.get('status'),
             'timestamp': item.get('timestamp'),
             'input_key': item.get('input_key'),
@@ -48,8 +48,8 @@ def lambda_handler(event, context):
             'statusCode': 200,
             'body': json.dumps({
                 'message': 'Items retrieved successfully',
-                'statusArchive': statusArchive,
-                'total': len(statusArchive)
+                'statusArchive': status_archive,
+                'total': len(status_archive)
             })
         }
 
