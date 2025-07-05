@@ -16,7 +16,8 @@ def lambda_handler(event, context):
     try:
         user_id = event['requestContext']['authorizer']['jwt']['claims']['sub']
         timestamp_ms = int(time.time() * 1000)
-        s3_key = f"{user_id}/{timestamp_ms}"
+        s3_key = f"{user_id}_{timestamp_ms}.mp4"
+        email = event['requestContext']['authorizer']['jwt']['claims'].get('email', 'fiap.grupo.2024@gmail.com')
         
         logger.info(f'Gerando presigned URL para a key: {s3_key}')
 
@@ -25,7 +26,10 @@ def lambda_handler(event, context):
             Params={
                 'Bucket': BUCKET_NAME,
                 'Key': s3_key,
-                'ContentType': 'application/octet-stream'
+                'ContentType': 'application/octet-stream',
+                'Metadata': {
+                    'user-email': email
+                }
             },
             ExpiresIn=3600
         )
